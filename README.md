@@ -9,3 +9,16 @@ Current commands:
 fb!help - all the commands
 fb!play voice_channel_id source - add song from source to voice channel with id voice_channel_id. Source is link on youtube video. This command is working too slowly now
 fb!play source - add song from source (youtube link) to voice channel where you are 
+
+******************
+Commit "Bug fix №1 and command join" from:
+
+Application couldn't create a bot due to new update of discord.py.
+But this bug was fixed with adding string
+    
+    intents = discord.Intents.default()
+    intents.message_content = True
+
+to FB.py file.
+    
+Also I have added command "join" which let FunnyBonny join to voice channel

@@ -1,60 +1,84 @@
 from discord.ext import commands
+from discord.utils import get
 import discord
 import youtube_dl
 import os
 import ffmpeg
 
+intents = discord.Intents.default()
+intents.message_content = True
+
 TOKEN = ''
-with open('.\\token.txt', r, encoding='utf-8') as tok:
+with open('.\\token.txt', 'r', encoding='utf-8') as tok:
     TOKEN = tok.read()
     tok.close()
 
-bot = commands.Bot(command_prefix=('fb!'))
+voice = None
+bot = commands.Bot(intents = intents, command_prefix='fb!')
 
 server, server_id, name_channel = None, None, None
 
 domains = ['https://www.youtube.com/', 'http://www.youtube.com/', 'https://youtu.be/', 'http://youtu.be/']
+
+
 async def check_domains(link):
     for x in domains:
-        if link.find(x)!=-1:
+        if link.find(x) != -1:
             return True
     return False;
+
 
 @bot.event
 async def on_ready():
     print('Ready on 100%\n')
 
+
 @bot.command(alliases=['do', 'will'])
 async def Hello(ctx):
     await ctx.send('Hello, my dear!')
 
+
 @bot.command()
 async def coolBand(ctx):
     embed = discord.Embed(
-        title = 'Of course, Linkin Park is coolest band!',
-        description = 'Click here to come to top article',
-        url = 'https://brodude.ru/9-sposobov-razvit-vnutrennij-sterzhen/'
-        )
+        title='Of course, Linkin Park is coolest band!',
+        description='Click here to come to top article',
+        url='https://brodude.ru/9-sposobov-razvit-vnutrennij-sterzhen/'
+    )
     await ctx.send(embed=embed)
+
+
+@bot.command()
+async def join(ctx):
+    global voice
+    channel = ctx.message.author.voice.channel
+    voice = get(bot.voice_clients, guild=ctx.guild)  # Проходимся по списку голосовых каналов
+                                                     # и получаем голосовой канал,
+                                                     # на котором находится отправитель
+    if voice and voice.is_connected():               # Если голос подключен
+        await voice.move_to(channel)                 # То перемещаем его в голосовой канал
+    else:
+        voice = await channel.connect()                             # Подключаем бота к голосовому каналу
+        await ctx.send(f'FunnyBonny запрыгивает на: {channel}')
 
 @bot.command()
 async def play(ctx, *, song=None):
-    author = ctx.author               #Кто отправил сообщение
+    author = ctx.author  # Кто отправил сообщение
 
-    source = ''                       #Ссылка или файл
-    if song==None:
-        server = ctx.guild                        
+    source = ''  # Ссылка или файл
+    if song == None:
+        server = ctx.guild
         name_channel = author.voice.channel.name
-        voice_channel = discord.utils.get(server.voice_channels, name = name_channel)
-    
+        voice_channel = discord.utils.get(server.voice_channels, name=name_channel)
+
     params = song.split(' ')
-    if len(params)==1:
+    if len(params) == 1:
         source = params[0]
         server = ctx.guild
         name_channel = author.voice.channel.name
-        voice_channel = discord.utils.get(server.voice_channels, name = name_channel)
+        voice_channel = discord.utils.get(server.voice_channels, name=name_channel)
         print('param 1')
-    elif len(params)==3:
+    elif len(params) == 3:
         server_id = params[0]
         voice_id = params[1]
         source = params[2]
@@ -71,27 +95,27 @@ async def play(ctx, *, song=None):
         await ctx.channel.send(f'{author.mention}, command is incorrect')
         return
 
-    voice = discord.utils.get(bot.voice_clients, guild = server)
+    voice = discord.utils.get(bot.voice_clients, guild=server)
     if voice is None:
         await voice_channel.connect()
-        voice = discord.utils.get(bot.voice_clients, guild = server)
+        voice = discord.utils.get(bot.voice_clients, guild=server)
 
     begin, end = '', ''
-    if source!='':
+    if source != '':
         begin = source[0:4]
 
-    if source==None:
+    if source == None:
         pass
-    elif begin=='http':                       #Обработка ссылки
-        if not await check_domains(source):   #Проверка на соответсвие доменам youtube
+    elif begin == 'http':  # Обработка ссылки
+        if not await check_domains(source):  # Проверка на соответсвие доменам youtube
             await ctx.channel.send(f'{author.mention} неразрешенная ссылка')
             return
 
-        ydl_opts = {                         #Опции для youtube-dl
+        ydl_opts = {  # Опции для youtube-dl
             'format': 'bestaduio/best',
-            'postprocessors':[
+            'postprocessors': [
                 {
-                    'key':'FFmpegExtractAudio',
+                    'key': 'FFmpegExtractAudio',
                     'preferredcodec': 'mp3',
                     'preferredquality': '192',
                 }
@@ -99,17 +123,17 @@ async def play(ctx, *, song=None):
         }
 
         with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([source])                     #Скачиваем аудио
+            ydl.download([source])  # Скачиваем аудио
 
-        files = os.listdir('.')    #Получаем список файлов в папке программы
+        files = os.listdir('.')  # Получаем список файлов в папке программы
         track = ''
 
         for file in files:
-            if file.find('.mp3')!=-1:
-                track = file       
+            if file.find('.mp3') != -1:
+                track = file
 
-        voice.play(discord.FFmpegPCMAudio(track))     #Проигрываем трек
-        #os.remove(track)                              #Удаление трэка
+        voice.play(discord.FFmpegPCMAudio(track))  # Проигрываем трек
+        # os.remove(track)                              #Удаление трэка
     else:
         voice.play(discord.FFmpegPCMAudio(f'Mus2/{source}'))
 
