@@ -22,3 +22,9 @@ But this bug was fixed with adding string
 to FB.py file.
     
 Also I have added command "join" which let FunnyBonny join to voice channel
+
+*****************
+Commit "YouTube Downloader" from:
+
+I added class Downloader, which let to load video or
+audio from YouTube if you have url of this page.
