@@ -1,12 +1,16 @@
 from discord.ext import commands
 from discord.utils import get
 import discord
-import youtube_dl
-import os
+from youtube_dl import YoutubeDL
 import ffmpeg
+import os
+from typing import Optional
 
 intents = discord.Intents.default()
 intents.message_content = True
+
+YDL_OPTIONS = {'format': 'worstaudio/best', 'noplaylist': 'False', 'simulate': 'True', 'key': 'FFmpegExtractAudio'}
+FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
 
 TOKEN = ''
 with open('.\\token.txt', 'r', encoding='utf-8') as tok:
@@ -21,7 +25,7 @@ server, server_id, name_channel = None, None, None
 domains = ['https://www.youtube.com/', 'http://www.youtube.com/', 'https://youtu.be/', 'http://youtu.be/']
 
 
-async def check_domains(link):
+async def check_domains(link: str):
     for x in domains:
         if link.find(x) != -1:
             return True
@@ -62,80 +66,20 @@ async def join(ctx):
         await ctx.send(f'FunnyBonny запрыгивает на: {channel}')
 
 @bot.command()
-async def play(ctx, *, song=None):
-    author = ctx.author  # Кто отправил сообщение
+async def play(ctx, *, url: Optional[str]):
+    global voice
+    info: Optional[str] = None
 
-    source = ''  # Ссылка или файл
-    if song == None:
-        server = ctx.guild
-        name_channel = author.voice.channel.name
-        voice_channel = discord.utils.get(server.voice_channels, name=name_channel)
+    with YoutubeDL(YDL_OPTIONS) as ydl:
+        if 'https://' in url:
+            info = ydl.extract_info(url, download=False)
+        else:
+            info = ydl.extract_info(f"ytsearch:{url}", download=False)['entries'][0]
 
-    params = song.split(' ')
-    if len(params) == 1:
-        source = params[0]
-        server = ctx.guild
-        name_channel = author.voice.channel.name
-        voice_channel = discord.utils.get(server.voice_channels, name=name_channel)
-        print('param 1')
-    elif len(params) == 3:
-        server_id = params[0]
-        voice_id = params[1]
-        source = params[2]
-        try:
-            server_id = int(server_id)
-            voice_id = int(voice_id)
-        except:
-            await ctx.channel.send(f'{author.mention}, id сервера или войса должно быть число!')
-            return
-        print('param 3')
-        server = bot.get_guild(server_id)
-        voice_channel = discord.utils.get(server.voice_channels, id=voice_id)
-    else:
-        await ctx.channel.send(f'{author.mention}, command is incorrect')
-        return
+    link = info['formats'][0]['url']
 
-    voice = discord.utils.get(bot.voice_clients, guild=server)
-    if voice is None:
-        await voice_channel.connect()
-        voice = discord.utils.get(bot.voice_clients, guild=server)
-
-    begin, end = '', ''
-    if source != '':
-        begin = source[0:4]
-
-    if source == None:
-        pass
-    elif begin == 'http':  # Обработка ссылки
-        if not await check_domains(source):  # Проверка на соответсвие доменам youtube
-            await ctx.channel.send(f'{author.mention} неразрешенная ссылка')
-            return
-
-        ydl_opts = {  # Опции для youtube-dl
-            'format': 'bestaduio/best',
-            'postprocessors': [
-                {
-                    'key': 'FFmpegExtractAudio',
-                    'preferredcodec': 'mp3',
-                    'preferredquality': '192',
-                }
-            ],
-        }
-
-        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([source])  # Скачиваем аудио
-
-        files = os.listdir('.')  # Получаем список файлов в папке программы
-        track = ''
-
-        for file in files:
-            if file.find('.mp3') != -1:
-                track = file
-
-        voice.play(discord.FFmpegPCMAudio(track))  # Проигрываем трек
-        # os.remove(track)                              #Удаление трэка
-    else:
-        voice.play(discord.FFmpegPCMAudio(f'Mus2/{source}'))
-
+    #author = ctx.author  # Кто отправил сообщение
+    #track = './Mus2/One_More_Light.mp4'
+    voice.play(discord.FFmpegPCMAudio(executable='ffmpeg\\ffmpeg.exe', source=link, **FFMPEG_OPTIONS))  # Проигрываем трек
 
 bot.run(TOKEN)

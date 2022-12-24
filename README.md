@@ -28,3 +28,11 @@ Commit "YouTube Downloader" from:
 
 I added class Downloader, which let to load video or
 audio from YouTube if you have url of this page.
+
+*****************
+Commit "FFmpeg Player" from 24.12.2022 21:17
+
+I added ffmpeg and changed settings for youtube_dl. Also
+I have changed function play. Now you can make bot to play
+a track from YouTube video if apply:
+fb!play "https://www.youtube.com/watch"
