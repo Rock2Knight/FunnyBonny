@@ -5,7 +5,9 @@ import discord
 from youtube_dl import YoutubeDL
 import ffmpeg
 import os
-from typing import Optional, List
+from typing import List
+
+from downloader import *
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -24,6 +26,7 @@ bot = commands.Bot(intents = intents, command_prefix='fb!')
 server, server_id, name_channel = None, None, None
 AudioQueue: List[str] = list()                           # Очередь треков
 trackIndex: int = 0                                      # Номер текущего трека в очереди
+downloader = Downloader()                                # Парсер для видео
 
 # Виды доменов в YouTube
 domains = ['https://www.youtube.com/', 'http://www.youtube.com/', 'https://youtu.be/', 'http://youtu.be/']
@@ -84,14 +87,9 @@ async def leave(ctx):
     else:
         await ctx.send(f'FunnyBonny покинул: {channel}')
 
-@bot.command()
-async def play(ctx, *, url: Optional[str]):
+# Проигрывание песни
+async def playTrack(url):
     global voice
-    global trackIndex
-    global AudioQueue
-    info: Optional[str] = None
-
-    AudioQueue.append(url)
 
     # Загружаем аудио по ссылке
     with YoutubeDL(YDL_OPTIONS) as ydl:
@@ -106,8 +104,24 @@ async def play(ctx, *, url: Optional[str]):
             else:
                 info = ydl.extract_info(f"ytsearch:{AudioQueue[trackIndex]}", download=False)['entries'][0]
 
-    link = info['formats'][0]['url']                                                                    # Получаем ссылку на аудио
+    link = info['formats'][0]['url']  # Получаем ссылку на аудио
     voice.play(discord.FFmpegPCMAudio(executable='ffmpeg\\ffmpeg.exe', source=link, **FFMPEG_OPTIONS))  # Проигрываем трек
+
+
+@bot.command()
+async def play(ctx, *, track: Optional[str]):
+    global voice
+    global trackIndex
+    global AudioQueue
+    info: Optional[str] = None
+
+    AudioQueue.append(track)     # Добавляем трек в очередь
+
+    if track[:5] == 'https':     # Если мы передали в аргумент команды url трэка,
+        await playTrack(track)   # то сразу передаем песню в плеер
+    else:
+        url = downloader.parseAudio(track)   # В противном случае
+        await playTrack(url)                 # сначала парсим youtube, Находим url трэка, а затем передаем его на плеер
 
 @bot.command()
 async def pause(ctx):
